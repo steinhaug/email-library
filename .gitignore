@@ -1,0 +1,6 @@
+credentials.php
+/logs/
+/vendor/
+composer.lock
+/.claude/settings.local.json
+/.claude/scheduled_tasks.lock

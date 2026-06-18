@@ -1,0 +1,6 @@
+{
+    "require": {
+        "webklex/php-imap": "^6.2",
+        "google/apiclient": "^2.19"
+    }
+}
