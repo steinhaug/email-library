@@ -1,6 +1,12 @@
 {
     "require": {
         "webklex/php-imap": "^6.2",
-        "google/apiclient": "^2.19"
+        "google/apiclient": "^2.19",
+        "steinhaug/mysqli": "^1.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "MailCleaner\\": "src/"
+        }
     }
 }
