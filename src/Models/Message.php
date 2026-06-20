@@ -2,8 +2,11 @@
 
 namespace MailCleaner\Models;
 
-class Message extends MessageHeaders
+class Message
 {
-    public string $bodyText = '';
-    public string $bodyHtml = '';
+    public function __construct(
+        public readonly MessageHeaders $headers,
+        public readonly string $bodyPlain,
+        public readonly ?string $bodyHtml = null,
+    ) {}
 }

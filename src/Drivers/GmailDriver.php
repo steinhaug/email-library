@@ -44,12 +44,12 @@ class GmailDriver implements MailAccountInterface
     public function search(SearchCriteria $criteria): array
     {
         $q = [];
-        if ($criteria->from)       $q[] = 'from:' . $criteria->from;
-        if ($criteria->subject)    $q[] = 'subject:(' . $criteria->subject . ')';
-        if ($criteria->unreadOnly) $q[] = 'is:unread';
-        if ($criteria->folder)     $q[] = 'label:' . $criteria->folder;
-        if ($criteria->after)      $q[] = 'after:'  . $criteria->after->format('Y/m/d');
-        if ($criteria->before)     $q[] = 'before:' . $criteria->before->format('Y/m/d');
+        if ($criteria->fromContains)    $q[] = 'from:' . $criteria->fromContains;
+        if ($criteria->subjectContains) $q[] = 'subject:(' . $criteria->subjectContains . ')';
+        if ($criteria->unreadOnly)      $q[] = 'is:unread';
+        if ($criteria->container)       $q[] = 'label:' . $criteria->container;
+        if ($criteria->newerThan)       $q[] = 'after:'  . $criteria->newerThan->format('Y/m/d');
+        if ($criteria->olderThan)       $q[] = 'before:' . $criteria->olderThan->format('Y/m/d');
 
         $params = ['q' => implode(' ', $q)];
         if ($criteria->limit > 0) {
@@ -111,13 +111,15 @@ class GmailDriver implements MailAccountInterface
         $msg = $this->service->users_messages->get($this->userId, $messageId, ['format' => 'full']);
         $h = $this->buildHeaders($msg);
 
-        $m = new Message($h->id, $h->from, $h->subject, $h->date, $h->isRead, $h->labels, $h->folder);
+        $bodyPlain = '';
+        $bodyHtml  = null;
         $payload = $msg->getPayload();
         if ($payload) {
-            $m->bodyText = $this->extractPart($payload, 'text/plain');
-            $m->bodyHtml = $this->extractPart($payload, 'text/html');
+            $bodyPlain = $this->extractPart($payload, 'text/plain');
+            $html      = $this->extractPart($payload, 'text/html');
+            $bodyHtml  = $html !== '' ? $html : null;
         }
-        return $m;
+        return new Message($h, $bodyPlain, $bodyHtml);
     }
 
     public function delete(string $messageId, bool $permanent = false): void
@@ -191,11 +193,11 @@ class GmailDriver implements MailAccountInterface
             $date = new \DateTime();
         }
 
-        $labels  = $msg->getLabelIds() ?? [];
-        $isRead  = !in_array('UNREAD', $labels, true);
-        $folder  = in_array('INBOX', $labels, true) ? 'INBOX' : ($labels[0] ?? 'INBOX');
+        $labels   = $msg->getLabelIds() ?? [];
+        $isUnread = in_array('UNREAD', $labels, true);
+        $folder   = in_array('INBOX', $labels, true) ? 'INBOX' : ($labels[0] ?? 'INBOX');
 
-        return new MessageHeaders($msg->getId(), $from, $subject, $date, $isRead, $labels, $folder);
+        return new MessageHeaders($msg->getId(), $from, $subject, $date, $isUnread, $labels, $folder);
     }
 
     private function extractPart(\Google\Service\Gmail\MessagePart $part, string $mimeType): string

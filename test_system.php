@@ -41,23 +41,20 @@ try {
     count($folders) > 0 ? ok('listContainers (' . count($folders) . ' folders)') : fail('listContainers', 'empty');
 
     // search — no criteria, limit 5
-    $c = new SearchCriteria();
-    $c->limit = 5;
+    $c = new SearchCriteria(limit: 5);
     $msgs = $imap->search($c);
     count($msgs) === 5 ? ok('search no-criteria limit=5') : fail('search no-criteria', 'expected 5 got ' . count($msgs));
 
-    // search — with folder
-    $c2 = new SearchCriteria();
-    $c2->folder = 'INBOX';
-    $c2->limit  = 2;
+    // search — with container
+    $c2 = new SearchCriteria(container: 'INBOX', limit: 2);
     $msgs2 = $imap->search($c2);
-    count($msgs2) > 0 ? ok('search folder=INBOX limit=2') : fail('search folder=INBOX', 'empty');
+    count($msgs2) > 0 ? ok('search container=INBOX limit=2') : fail('search container=INBOX', 'empty');
 
     // fetchHeaders
     if (!empty($msgs)) {
-        $firstId = $msgs[0]->id;
+        $firstId = $msgs[0]->messageId;
         $h = $imap->fetchHeaders($firstId);
-        ($h->id === $firstId) ? ok('fetchHeaders') : fail('fetchHeaders', 'id mismatch');
+        ($h->messageId === $firstId) ? ok('fetchHeaders') : fail('fetchHeaders', 'messageId mismatch');
 
         // fetchBody
         $body = $imap->fetchBody($firstId);
@@ -65,7 +62,7 @@ try {
 
         // fetchMessage
         $m = $imap->fetchMessage($firstId);
-        ($m->id === $firstId && is_string($m->bodyText)) ? ok('fetchMessage') : fail('fetchMessage', 'bad structure');
+        ($m->headers->messageId === $firstId && is_string($m->bodyPlain)) ? ok('fetchMessage') : fail('fetchMessage', 'bad structure');
     }
 
     $imap->disconnect();
@@ -91,31 +88,26 @@ try {
     in_array('INBOX', $labels) ? ok('listContainers has INBOX') : fail('listContainers', 'INBOX label missing');
 
     // search — no criteria, limit 5
-    $c = new SearchCriteria();
-    $c->limit = 5;
+    $c = new SearchCriteria(limit: 5);
     $msgs = $gmail->search($c);
     count($msgs) === 5 ? ok('search no-criteria limit=5') : fail('search no-criteria', 'expected 5 got ' . count($msgs));
 
     // search — with from filter
-    $c2 = new SearchCriteria();
-    $c2->from  = 'notifications@github.com';
-    $c2->limit = 2;
+    $c2 = new SearchCriteria(fromContains: 'notifications@github.com', limit: 2);
     $msgs2 = $gmail->search($c2);
-    count($msgs2) > 0 ? ok('search from=github limit=2') : fail('search from=github', 'empty');
+    count($msgs2) > 0 ? ok('search fromContains=github limit=2') : fail('search fromContains=github', 'empty');
 
     // search — unread only
-    $c3 = new SearchCriteria();
-    $c3->unreadOnly = true;
-    $c3->limit      = 3;
+    $c3 = new SearchCriteria(unreadOnly: true, limit: 3);
     $msgs3 = $gmail->search($c3);
     is_array($msgs3) ? ok('search unreadOnly (got ' . count($msgs3) . ')') : fail('search unreadOnly', 'not array');
 
     // fetchHeaders
     if (!empty($msgs)) {
-        $firstId = $msgs[0]->id;
+        $firstId = $msgs[0]->messageId;
         $h = $gmail->fetchHeaders($firstId);
-        ($h->id === $firstId) ? ok('fetchHeaders') : fail('fetchHeaders', 'id mismatch');
-        (!in_array('UNREAD', $h->labels) === $h->isRead) ? ok('fetchHeaders isRead consistent') : fail('fetchHeaders', 'isRead/labels mismatch');
+        ($h->messageId === $firstId) ? ok('fetchHeaders') : fail('fetchHeaders', 'messageId mismatch');
+        (in_array('UNREAD', $h->labels) === $h->isUnread) ? ok('fetchHeaders isUnread consistent') : fail('fetchHeaders', 'isUnread/labels mismatch');
 
         // fetchBody
         $body = $gmail->fetchBody($firstId);
@@ -123,7 +115,7 @@ try {
 
         // fetchMessage
         $m = $gmail->fetchMessage($firstId);
-        ($m->id === $firstId && isset($m->bodyText)) ? ok('fetchMessage') : fail('fetchMessage', 'bad structure');
+        ($m->headers->messageId === $firstId && is_string($m->bodyPlain)) ? ok('fetchMessage') : fail('fetchMessage', 'bad structure');
     }
 
     $gmail->disconnect();

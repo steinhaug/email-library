@@ -47,15 +47,15 @@ class ImapDriver implements MailAccountInterface
 
     public function search(SearchCriteria $criteria): array
     {
-        $folderName = $criteria->folder ?? 'INBOX';
+        $folderName = $criteria->container ?? 'INBOX';
         $folder = $this->client->getFolder($folderName);
         $query  = $folder->messages();
 
-        if ($criteria->from)       $query->where('FROM',    $criteria->from);
-        if ($criteria->subject)    $query->where('SUBJECT', $criteria->subject);
-        if ($criteria->unreadOnly) $query->where('UNSEEN');
-        if ($criteria->after)      $query->where('SINCE',  $criteria->after->format('d-M-Y'));
-        if ($criteria->before)     $query->where('BEFORE', $criteria->before->format('d-M-Y'));
+        if ($criteria->fromContains)    $query->where('FROM',    $criteria->fromContains);
+        if ($criteria->subjectContains) $query->where('SUBJECT', $criteria->subjectContains);
+        if ($criteria->unreadOnly)      $query->where('UNSEEN');
+        if ($criteria->newerThan)       $query->where('SINCE',  $criteria->newerThan->format('d-M-Y'));
+        if ($criteria->olderThan)       $query->where('BEFORE', $criteria->olderThan->format('d-M-Y'));
 
         // IMAP SEARCH requires at least one criterion
         if ($query->getQuery()->isEmpty()) $query->where('ALL');
@@ -99,10 +99,9 @@ class ImapDriver implements MailAccountInterface
         $msg = $this->getByUid($folder, $uid);
 
         $h = $this->buildHeaders($msg, $folder);
-        $m = new Message($h->id, $h->from, $h->subject, $h->date, $h->isRead, $h->labels, $h->folder);
-        $m->bodyText = (string) ($msg->getTextBody() ?: '');
-        $m->bodyHtml = (string) ($msg->getHTMLBody() ?: '');
-        return $m;
+        $bodyPlain = (string) ($msg->getTextBody() ?: '');
+        $html      = (string) ($msg->getHTMLBody() ?: '');
+        return new Message($h, $bodyPlain, $html !== '' ? $html : null);
     }
 
     public function delete(string $messageId, bool $permanent = false): void
@@ -211,15 +210,15 @@ class ImapDriver implements MailAccountInterface
             $date = new \DateTime();
         }
 
-        $flags  = $msg->getFlags()->toArray();
-        $isRead = in_array('Seen', $flags, true);
+        $flags    = $msg->getFlags()->toArray();
+        $isUnread = !in_array('Seen', $flags, true);
 
         return new MessageHeaders(
             $this->encodeId($folderName, $uid),
             $from,
             $subject,
             $date,
-            $isRead,
+            $isUnread,
             $flags,
             $folderName,
         );

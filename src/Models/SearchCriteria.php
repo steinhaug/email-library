@@ -4,11 +4,13 @@ namespace MailCleaner\Models;
 
 class SearchCriteria
 {
-    public ?string $from      = null;
-    public ?string $subject   = null;
-    public ?string $folder    = null;
-    public bool    $unreadOnly = false;
-    public int     $limit     = 50;
-    public ?\DateTime $after  = null;
-    public ?\DateTime $before = null;
+    public function __construct(
+        public readonly ?string $fromContains = null,
+        public readonly ?string $subjectContains = null,
+        public readonly ?\DateTimeImmutable $olderThan = null,
+        public readonly ?\DateTimeImmutable $newerThan = null,
+        public readonly ?bool $unreadOnly = null,
+        public readonly ?string $container = null,
+        public readonly int $limit = 100,
+    ) {}
 }
