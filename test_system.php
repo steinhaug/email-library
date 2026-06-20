@@ -118,6 +118,22 @@ try {
         ($m->headers->messageId === $firstId && is_string($m->bodyPlain)) ? ok('fetchMessage') : fail('fetchMessage', 'bad structure');
     }
 
+    // testFilterAccess — verifiserer at GMAIL_SETTINGS_BASIC scope er aktivt
+    try {
+        $filters = $gmail->listFilters();
+        ok('listFilters (' . count($filters) . ' filtre funnet)');
+    } catch (\Throwable $e) {
+        $msg = $e->getMessage();
+        $isScopeIssue = str_contains($msg, 'insufficient')
+            || str_contains($msg, 'Insufficient Permission')
+            || str_contains($msg, '403');
+        if ($isScopeIssue) {
+            fail('listFilters', 'SCOPE MANGLER — reautoriser med GMAIL_SETTINGS_BASIC: ' . $msg);
+        } else {
+            fail('listFilters', 'Uventet feil (ikke scope-relatert): ' . $msg);
+        }
+    }
+
     $gmail->disconnect();
     ok('disconnect');
 

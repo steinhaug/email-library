@@ -19,7 +19,10 @@ class GmailDriver implements MailAccountInterface
         $client = new \Google\Client();
         $client->setClientId($oauth['client_id']);
         $client->setClientSecret($oauth['client_secret']);
-        $client->setScopes([\Google\Service\Gmail::GMAIL_MODIFY]);
+        $client->setScopes([
+            \Google\Service\Gmail::GMAIL_MODIFY,
+            \Google\Service\Gmail::GMAIL_SETTINGS_BASIC,
+        ]);
         $client->setAccessType('offline');
         $client->refreshToken($oauth['refresh_token']);
 
@@ -85,6 +88,27 @@ class GmailDriver implements MailAccountInterface
             fn($l) => $l->getName(),
             $response->getLabels() ?? []
         );
+    }
+
+    /**
+     * Gmail-specific (not in MailAccountInterface — IMAP has no equivalent).
+     * Requires the GMAIL_SETTINGS_BASIC scope.
+     *
+     * @return array<int, array{id: string, criteria: array, action: array}>
+     */
+    public function listFilters(): array
+    {
+        $response = $this->service->users_settings_filters->listUsersSettingsFilters($this->userId);
+
+        $filters = [];
+        foreach ($response->getFilter() ?? [] as $f) {
+            $filters[] = [
+                'id'       => $f->getId(),
+                'criteria' => $this->extractFilterCriteria($f->getCriteria()),
+                'action'   => $this->extractFilterAction($f->getAction()),
+            ];
+        }
+        return $filters;
     }
 
     public function fetchHeaders(string $messageId): MessageHeaders
@@ -174,6 +198,36 @@ class GmailDriver implements MailAccountInterface
     }
 
     // --- Private helpers ---
+
+    /**
+     * (array)-cast on Google model objects yields mangled protected-prop keys,
+     * so pull the fields we care about via explicit getters and drop nulls.
+     */
+    private function extractFilterCriteria(?\Google\Service\Gmail\FilterCriteria $c): array
+    {
+        if (!$c) return [];
+        return array_filter([
+            'from'           => $c->getFrom(),
+            'to'             => $c->getTo(),
+            'subject'        => $c->getSubject(),
+            'query'          => $c->getQuery(),
+            'negatedQuery'   => $c->getNegatedQuery(),
+            'hasAttachment'  => $c->getHasAttachment(),
+            'excludeChats'   => $c->getExcludeChats(),
+            'size'           => $c->getSize(),
+            'sizeComparison' => $c->getSizeComparison(),
+        ], fn($v) => $v !== null);
+    }
+
+    private function extractFilterAction(?\Google\Service\Gmail\FilterAction $a): array
+    {
+        if (!$a) return [];
+        return array_filter([
+            'addLabelIds'    => $a->getAddLabelIds(),
+            'removeLabelIds' => $a->getRemoveLabelIds(),
+            'forward'        => $a->getForward(),
+        ], fn($v) => $v !== null);
+    }
 
     private function buildHeaders(\Google\Service\Gmail\Message $msg): MessageHeaders
     {
